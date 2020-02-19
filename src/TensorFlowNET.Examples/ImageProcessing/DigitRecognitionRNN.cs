@@ -26,13 +26,8 @@ namespace TensorFlowNET.Examples
     /// Recurrent Neural Network for handwritten digits MNIST.
     /// https://medium.com/machine-learning-algorithms/mnist-using-recurrent-neural-network-2d070a5915a2
     /// </summary>
-    public class DigitRecognitionRNN : IExample
+    public class DigitRecognitionRNN : SciSharpExample, IExample
     {
-        public bool Enabled { get; set; } = true;
-        public bool IsImportingGraph { get; set; } = false;
-
-        public string Name => "MNIST RNN";
-
         // Hyper-parameters
         int n_neurons = 128;
         float learning_rate = 0.001f;
@@ -57,21 +52,31 @@ namespace TensorFlowNET.Examples
         NDArray x_valid, y_valid;
         NDArray x_test, y_test;
 
+        Session sess;
+
+        public ExampleConfig InitConfig()
+            => Config = new ExampleConfig
+            {
+                Name = "MNIST RNN",
+                Enabled = true,
+                IsImportingGraph = false,
+                Priority = 10
+            };
+
         public bool Run()
         {
             PrepareData();
             BuildGraph();
 
-            using (var sess = tf.Session())
-            {
-                Train(sess);
-                Test(sess);
-            }
+            sess = tf.Session();
+
+            Train();
+            Test();
 
             return accuracy_test > 0.95;
         }
 
-        public Graph BuildGraph()
+        public override Graph BuildGraph()
         {
             var graph = new Graph().as_default();
 
@@ -90,7 +95,7 @@ namespace TensorFlowNET.Examples
             return graph;
         }
 
-        public void Train(Session sess)
+        public override void Train()
         {
             float loss_val = 100.0f;
             float accuracy_val = 0f;
@@ -127,14 +132,14 @@ namespace TensorFlowNET.Examples
 
                 // Run validation after every epoch
                 (loss_val, accuracy_val) = sess.run((loss, accuracy), (X, x_valid), (y, y_valid));
-                
+
                 print("---------------------------------------------------------");
                 print($"Epoch: {epoch + 1}, validation loss: {loss_val.ToString("0.0000")}, validation accuracy: {accuracy_val.ToString("P")}");
                 print("---------------------------------------------------------");
             }
         }
 
-        public void Test(Session sess)
+        public override void Test()
         {
             var result = sess.run(new[] { loss, accuracy }, new FeedItem(X, x_test), new FeedItem(y, y_test));
             loss_test = result[0];
@@ -144,7 +149,7 @@ namespace TensorFlowNET.Examples
             print("---------------------------------------------------------");
         }
 
-        public void PrepareData()
+        public override void PrepareData()
         {
             mnist = MnistModelLoader.LoadAsync(".resources/mnist", oneHot: true, showProgressInConsole: true).Result;
             (x_train, y_train) = (mnist.Train.Data, mnist.Train.Labels);
@@ -161,9 +166,5 @@ namespace TensorFlowNET.Examples
             print($"- Validation-set:\t{len(mnist.Validation.Data)}");
             print($"- Test-set:\t\t{len(mnist.Test.Data)}");
         }
-
-        public Graph ImportGraph() => throw new NotImplementedException();
-
-        public void Predict(Session sess) => throw new NotImplementedException();
     }
 }

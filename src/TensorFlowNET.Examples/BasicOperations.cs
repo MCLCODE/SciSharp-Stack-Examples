@@ -9,13 +9,16 @@ namespace TensorFlowNET.Examples
     /// Basic Operations example using TensorFlow library.
     /// https://github.com/aymericdamien/TensorFlow-Examples/blob/master/examples/1_Introduction/basic_operations.py
     /// </summary>
-    public class BasicOperations : IExample
+    public class BasicOperations : SciSharpExample, IExample
     {
-        public bool Enabled { get; set; } = true;
-        public string Name => "Basic Operations";
-        public bool IsImportingGraph { get; set; } = false;
-
-        private Session sess;
+        public ExampleConfig InitConfig()
+            => Config = new ExampleConfig
+            {
+                Name = "Basic Operations",
+                Enabled = true,
+                IsImportingGraph = false,
+                Priority = 2
+            };
 
         public bool Run()
         {
@@ -26,7 +29,7 @@ namespace TensorFlowNET.Examples
             var b = tf.constant(3);
             
             // Launch the default graph.
-            using (sess = tf.Session())
+            using (var sess = tf.Session())
             {
                 Console.WriteLine("a=2, b=3");
                 Console.WriteLine($"Addition with constants: {sess.run(a + b)}");
@@ -37,20 +40,20 @@ namespace TensorFlowNET.Examples
             // The value returned by the constructor represents the output
             // of the Variable op. (define as input when running session)
             // tf Graph input
-            a = tf.placeholder(tf.int16);
-            b = tf.placeholder(tf.int16);
+            a = tf.placeholder(tf.int32);
+            b = tf.placeholder(tf.int32);
 
             // Define some operations
             var add = tf.add(a, b);
             var mul = tf.multiply(a, b);
 
             // Launch the default graph.
-            using(sess = tf.Session())
+            using(var sess = tf.Session())
             {
                 var feed_dict = new FeedItem[]
                 {
-                    new FeedItem(a, (short)2),
-                    new FeedItem(b, (short)3)
+                    new FeedItem(a, 2),
+                    new FeedItem(b, 3)
                 };
                 // Run every operation with variable input
                 Console.WriteLine($"Addition with variables: {sess.run(add, feed_dict)}");
@@ -89,11 +92,11 @@ namespace TensorFlowNET.Examples
             // graph: the two constants and matmul.
             //
             // The output of the op is returned in 'result' as a numpy `ndarray` object.
-            using (sess = tf.Session())
+            using (var sess = tf.Session())
             {
                 var result = sess.run(product);
                 Console.WriteLine(result.ToString()); // ==> [[ 12.]]
-            };
+            }
 
             // `BatchMatMul` is actually embedded into the `MatMul` operation on the tf.dll side. Every time we ask
             // for a multiplication between matrices with rank > 2, the first rank - 2 dimensions are checked to be consistent
@@ -153,35 +156,6 @@ namespace TensorFlowNET.Examples
                 return np.reshape(result, 18)
                     .array_equal(checkTensor);
             }
-        }
-
-        public void PrepareData()
-        {
-        }
-
-        public Graph ImportGraph()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Graph BuildGraph()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Train(Session sess)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Predict(Session sess)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Test(Session sess)
-        {
-            throw new NotImplementedException();
         }
     }
 }

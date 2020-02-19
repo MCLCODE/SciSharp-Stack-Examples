@@ -34,13 +34,8 @@ namespace TensorFlowNET.Examples
     /// 
     /// https://github.com/aymericdamien/TensorFlow-Examples/blob/master/examples/3_NeuralNetworks/bidirectional_rnn.py
     /// </summary>
-    public class DigitRecognitionLSTM : IExample
+    public class DigitRecognitionLSTM : SciSharpExample, IExample
     {
-        public bool Enabled { get; set; } = true;
-        public bool IsImportingGraph { get; set; } = false;
-
-        public string Name => "MNIST LSTM";
-
         // Training Parameters
         float learning_rate = 0.001f;
         int training_steps = 1000;
@@ -60,22 +55,31 @@ namespace TensorFlowNET.Examples
         Operation train_op;
         
         float accuracy_test = 0f;
+        Session sess;
+
+        public ExampleConfig InitConfig()
+            => Config = new ExampleConfig
+            {
+                Name = "MNIST LSTM",
+                Enabled = true,
+                IsImportingGraph = false,
+                Priority = 11
+            };
 
         public bool Run()
         {
             PrepareData();
             BuildGraph();
 
-            using (var sess = tf.Session())
-            {
-                Train(sess);
-                Test(sess);
-            }
+            sess = tf.Session();
+
+            Train();
+            Test();
 
             return accuracy_test > 0.40;
         }
 
-        public Graph BuildGraph()
+        public override Graph BuildGraph()
         {
             var graph = new Graph().as_default();
 
@@ -115,7 +119,7 @@ namespace TensorFlowNET.Examples
             return graph;
         }
 
-        public void Train(Session sess)
+        public override void Train()
         {
             float loss_val = 100.0f;
             float accuracy_val = 0f;
@@ -147,7 +151,7 @@ namespace TensorFlowNET.Examples
             print("Optimization Finished!");
         }
 
-        public void Test(Session sess)
+        public override void Test()
         {
             // Calculate accuracy for 128 mnist test images
             var (x_test, y_test) = (mnist.Test.Data[":128"], mnist.Test.Labels[":128"]);
@@ -158,7 +162,7 @@ namespace TensorFlowNET.Examples
             print("---------------------------------------------------------");
         }
 
-        public void PrepareData()
+        public override void PrepareData()
         {
             mnist = MnistModelLoader.LoadAsync(".resources/mnist", oneHot: true, showProgressInConsole: true).Result;
 
@@ -167,9 +171,5 @@ namespace TensorFlowNET.Examples
             print($"- Validation-set:\t{len(mnist.Validation.Data)}");
             print($"- Test-set:\t\t{len(mnist.Test.Data)}");
         }
-
-        public Graph ImportGraph() => throw new NotImplementedException();
-
-        public void Predict(Session sess) => throw new NotImplementedException();
     }
 }

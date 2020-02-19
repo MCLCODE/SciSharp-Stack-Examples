@@ -42,13 +42,8 @@ namespace TensorFlowNET.Examples
     /// TODO: Thread Queue will be added to improve images loading efficiency later.
     /// https://www.easy-tensorflow.com/tf-tutorials/convolutional-neural-nets-cnns/cnn1
     /// </summary>
-    class CnnInYourOwnData : IExample
+    class CnnInYourOwnData : SciSharpExample, IExample
     {
-        public bool Enabled { get; set; } = true;
-        public bool IsImportingGraph { get; set; } = false;
-
-        public string Name => "CnnInYourOwnData";
-
         string logs_path = "logs";
 
         string[] ArrayFileName_Train, ArrayFileName_Validation, ArrayFileName_Test;
@@ -106,18 +101,26 @@ namespace TensorFlowNET.Examples
 
         string path_model;
         int TrainQueueCapa = 3;
+        Session sess;
 
+        public ExampleConfig InitConfig()
+            => Config = new ExampleConfig
+            {
+                Name = "CnnInYourOwnData",
+                Enabled = true,
+                IsImportingGraph = false,
+                Priority = 12
+            };
 
         public bool Run()
         {
             PrepareData();
             BuildGraph();
 
-            using (var sess = tf.Session())
-            {
-                Train(sess);
-                Test(sess);
-            }
+            sess = tf.Session();
+
+            Train();
+            Test();
 
             TestDataOutput();
 
@@ -126,23 +129,22 @@ namespace TensorFlowNET.Examples
         }
 
         #region PrepareData
-        public void PrepareData()
+        public override void PrepareData()
         {
+            string url = "https://github.com/SciSharp/SciSharp-Stack-Examples/raw/master/data/data_CnnInYourOwnData.zip";
+            Directory.CreateDirectory(Config.Name);
+            Utility.Web.Download(url, Config.Name, "data_CnnInYourOwnData.zip");
+            Utility.Compress.UnZip(Config.Name + "\\data_CnnInYourOwnData.zip", Config.Name);
 
-            string url = "https://github.com/SciSharp/SciSharp-Stack-Examples/blob/master/data/data_CnnInYourOwnData.zip";
-            Directory.CreateDirectory(Name);
-            Utility.Web.Download(url, Name, "data_CnnInYourOwnData.zip");
-            Utility.Compress.UnZip(Name + "\\data_CnnInYourOwnData.zip", Name);
+            FillDictionaryLabel(Config.Name + "\\train");
 
-            FillDictionaryLabel(Name + "\\train");
-
-            ArrayFileName_Train = Directory.GetFiles(Name + "\\train", "*.*", SearchOption.AllDirectories);
+            ArrayFileName_Train = Directory.GetFiles(Config.Name + "\\train", "*.*", SearchOption.AllDirectories);
             ArrayLabel_Train = GetLabelArray(ArrayFileName_Train);
 
-            ArrayFileName_Validation = Directory.GetFiles(Name + "\\validation", "*.*", SearchOption.AllDirectories);
+            ArrayFileName_Validation = Directory.GetFiles(Config.Name + "\\validation", "*.*", SearchOption.AllDirectories);
             ArrayLabel_Validation = GetLabelArray(ArrayFileName_Validation);
 
-            ArrayFileName_Test = Directory.GetFiles(Name + "\\test", "*.*", SearchOption.AllDirectories);
+            ArrayFileName_Test = Directory.GetFiles(Config.Name + "\\test", "*.*", SearchOption.AllDirectories);
             ArrayLabel_Test = GetLabelArray(ArrayFileName_Test);
 
             //shuffle array
@@ -171,33 +173,36 @@ namespace TensorFlowNET.Examples
         }
         private void LoadImage(string[] a, NDArray b, string c)
         {
-            for (int i = 0; i < a.Length; i++)
+            using (var graph = tf.Graph().as_default())
             {
-                b[i] = ReadTensorFromImageFile(a[i]);
-                Console.Write(".");
+                for (int i = 0; i < a.Length; i++)
+                {
+                    b[i] = ReadTensorFromImageFile(a[i], graph);
+                    Console.Write(".");
+                }
             }
+
             Console.WriteLine();
             Console.WriteLine("Load Images To NDArray: " + c);
         }
-        private NDArray ReadTensorFromImageFile(string file_name)
-        {
-            using (var graph = tf.Graph().as_default())
-            {
-                var file_reader = tf.read_file(file_name, "file_reader");
-                var decodeJpeg = tf.image.decode_jpeg(file_reader, channels: n_channels, name: "DecodeJpeg");
-                var cast = tf.cast(decodeJpeg, tf.float32);
-                var dims_expander = tf.expand_dims(cast, 0);
-                var resize = tf.constant(new int[] { img_h, img_w });
-                var bilinear = tf.image.resize_bilinear(dims_expander, resize);
-                var sub = tf.subtract(bilinear, new float[] { img_mean });
-                var normalized = tf.divide(sub, new float[] { img_std });
 
-                using (var sess = tf.Session(graph))
-                {
-                    return sess.run(normalized);
-                }
+        private NDArray ReadTensorFromImageFile(string file_name, Graph graph)
+        {
+            var file_reader = tf.read_file(file_name, "file_reader");
+            var decodeJpeg = tf.image.decode_jpeg(file_reader, channels: n_channels, name: "DecodeJpeg");
+            var cast = tf.cast(decodeJpeg, tf.float32);
+            var dims_expander = tf.expand_dims(cast, 0);
+            var resize = tf.constant(new int[] { img_h, img_w });
+            var bilinear = tf.image.resize_bilinear(dims_expander, resize);
+            var sub = tf.subtract(bilinear, new float[] { img_mean });
+            var normalized = tf.divide(sub, new float[] { img_std });
+
+            using (var sess = tf.Session(graph))
+            {
+                return sess.run(normalized);
             }
         }
+
         /// <summary>
         /// Shuffle Images and Labels Array
         /// </summary>
@@ -226,6 +231,7 @@ namespace TensorFlowNET.Examples
             print("shuffle array list： " + count.ToString());
             return (new_images, new_labels);
         }
+
         /// <summary>
         /// Get Label Array with Dictionary
         /// </summary>
@@ -242,6 +248,7 @@ namespace TensorFlowNET.Examples
             }
             return ArrayLabel;
         }
+
         /// <summary>
         /// Get Dictionary , Key is Order Number , Value is Label
         /// </summary>
@@ -265,7 +272,7 @@ namespace TensorFlowNET.Examples
         #endregion
 
         #region BuildGraph
-        public Graph BuildGraph()
+        public override Graph BuildGraph()
         {
             var graph = new Graph().as_default();
 
@@ -451,7 +458,7 @@ namespace TensorFlowNET.Examples
         #endregion
 
         #region Train
-        public void Train(Session sess)
+        public override void Train()
         {
             // Number of training iterations in each epoch
             var num_tr_iter = (ArrayLabel_Train.Length) / batch_size;
@@ -461,7 +468,7 @@ namespace TensorFlowNET.Examples
 
             var saver = tf.train.Saver(tf.global_variables(), max_to_keep: 10);
 
-            path_model = Name + "\\MODEL";
+            path_model = Config.Name + "\\MODEL";
             Directory.CreateDirectory(path_model);
 
             float loss_val = 100.0f;
@@ -514,7 +521,7 @@ namespace TensorFlowNET.Examples
                         print("CNN：" + ($"iter {item.iter.ToString("000")}: Loss={loss_val.ToString("0.0000")}, Training Accuracy={accuracy_val.ToString("P")} {sw.ElapsedMilliseconds}ms"));
                         sw.Restart();
                     }
-                }               
+                }
 
                 // Run validation after every epoch
                 (loss_val, accuracy_val) = sess.run((loss, accuracy), (x, x_valid), (y, y_valid));
@@ -539,6 +546,7 @@ namespace TensorFlowNET.Examples
             }
             Write_Dictionary(path_model + "\\dic.txt", Dict_Label);
         }
+
         private void Write_Dictionary(string path, Dictionary<Int64, string> mydic)
         {
             FileStream fs = new FileStream(path, FileMode.Create);
@@ -549,12 +557,14 @@ namespace TensorFlowNET.Examples
             fs.Close();
             print("Write_Dictionary");
         }
+
         private (NDArray, NDArray) Randomize(NDArray x, NDArray y)
         {
             var perm = np.random.permutation(y.shape[0]);
             np.random.shuffle(perm);
             return (x[perm], y[perm]);
         }
+
         private (NDArray, NDArray) GetNextBatch(NDArray x, NDArray y, int start, int end)
         {
             var slice = new Slice(start, end);
@@ -562,6 +572,7 @@ namespace TensorFlowNET.Examples
             var y_batch = y[slice];
             return (x_batch, y_batch);
         }
+
         private unsafe (NDArray, NDArray) GetNextBatch(Session sess, string[] x, NDArray y, int start, int end)
         {
             NDArray x_batch = np.zeros(end - start, img_h, img_w, n_channels);
@@ -569,6 +580,7 @@ namespace TensorFlowNET.Examples
             for (int i = start; i < end; i++)
             {
                 NDArray img4 = cv2.imread(x[i], IMREAD_COLOR.IMREAD_GRAYSCALE);
+                img4 = img4.reshape(img4.shape[0], img4.shape[1], 1);
                 x_batch[n] = sess.run(normalized, (decodeJpeg, img4));
                 n++;
             }
@@ -578,7 +590,7 @@ namespace TensorFlowNET.Examples
         }
         #endregion               
 
-        public void Test(Session sess)
+        public override void Test()
         {
             (loss_test, accuracy_test) = sess.run((loss, accuracy), (x, x_test), (y, y_test));
             print("CNN：" + "---------------------------------------------------------");
@@ -586,8 +598,8 @@ namespace TensorFlowNET.Examples
             print("CNN：" + "---------------------------------------------------------");
 
             (Test_Cls, Test_Data) = sess.run((cls_prediction, prob), (x, x_test));
-
         }
+
         private void TestDataOutput()
         {
             for (int i = 0; i < ArrayLabel_Test.Length; i++)
@@ -604,10 +616,5 @@ namespace TensorFlowNET.Examples
                     + "fileName:" + fileName);
             }
         }
-        public Graph ImportGraph() => throw new NotImplementedException();
-
-        public void Predict(Session sess) => throw new NotImplementedException();
-
-
     }
 }

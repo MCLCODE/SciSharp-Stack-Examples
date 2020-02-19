@@ -27,14 +27,20 @@ namespace TensorFlowNET.Examples
     /// <summary>
     /// https://github.com/nicolov/naive_bayes_tensorflow
     /// </summary>
-    public class NaiveBayesClassifier : IExample
+    public class NaiveBayesClassifier : SciSharpExample, IExample
     {
-        public bool Enabled { get; set; } = true;
-        public string Name => "Naive Bayes Classifier";
-        public bool IsImportingGraph { get; set; } = false;
-
         public NDArray X, y;
         public Normal dist { get; set; }
+
+        public ExampleConfig InitConfig()
+            => Config = new ExampleConfig
+            {
+                Name = "Naive Bayes Classifier",
+                Enabled = true,
+                IsImportingGraph = false,
+                Priority = 7
+            };
+
         public bool Run()
         {
             PrepareData();
@@ -149,7 +155,7 @@ namespace TensorFlowNET.Examples
             return tf.exp(log_prob);
         }
 
-        public void PrepareData()
+        public override void PrepareData()
         {
             #region Training data
             X = np.array(new float[,] {
@@ -191,31 +197,6 @@ namespace TensorFlowNET.Examples
             string url = "https://raw.githubusercontent.com/SciSharp/TensorFlow.NET/master/data/nb_example.npy";
             Web.Download(url, "nb", "nb_example.npy");
             #endregion
-        }
-
-        public Graph ImportGraph()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Graph BuildGraph()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Train(Session sess)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Predict(Session sess)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Test(Session sess)
-        {
-            throw new NotImplementedException();
         }
     }
 }
